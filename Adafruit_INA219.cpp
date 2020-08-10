@@ -489,7 +489,7 @@ void Adafruit_INA219::setCalibration_16V_400mA() {
  *          32.767mA.
  *  @note   These calculations assume a 1.0 ohm resistor is present
  */
-void INA219::setCalibration_16V_40mA(bool useAve, bool useTrig)
+void Adafruit_INA219::setCalibration_16V_40mA(bool useAve, bool useTrig)
 {
 
     // Calibration which uses the highest precision for
