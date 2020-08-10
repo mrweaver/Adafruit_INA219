@@ -153,11 +153,13 @@ public:
   void setCalibration_32V_2A();
   void setCalibration_32V_1A();
   void setCalibration_16V_400mA();
+  void setCalibration_16V_40mA(bool useAve = true, bool useTrig = true);
   float getBusVoltage_V();
   float getShuntVoltage_mV();
   float getCurrent_mA();
   float getPower_mW();
   void powerSave(bool on);
+  void setOpMode(uint8_t mode);
 
 private:
   Adafruit_I2CDevice *i2c_dev = NULL;
