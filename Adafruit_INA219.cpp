@@ -285,11 +285,10 @@ void Adafruit_INA219::setCalibration_32V_2A()
  */
 void Adafruit_INA219::powerSave(bool on)
 {
-    Adafruit_BusIO_Register config_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
-
-    Adafruit_BusIO_RegisterBits mode_bits = Adafruit_BusIO_RegisterBits(&config_reg, 3, 0);
     if (on)
     {
+        Adafruit_BusIO_Register config_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
+        Adafruit_BusIO_RegisterBits mode_bits = Adafruit_BusIO_RegisterBits(&config_reg, 3, 0);
         mode_bits.write(INA219_CONFIG_MODE_POWERDOWN);
     }
     else
@@ -305,16 +304,14 @@ void Adafruit_INA219::powerSave(bool on)
  */
 void Adafruit_INA219::writeConfig()
 {
-    Adafruit_BusIO_Register config_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
-
     uint16_t config = ina219_mode |
                       ina219_adcResShunt |
                       ina219_adcResBus |
                       ina219_gainShunt |
                       ina219_busVoltRange;
 
-    Adafruit_BusIO_RegisterBits mode_bits = Adafruit_BusIO_RegisterBits(&config_reg, 3, 0);
-    mode_bits.write(config);
+    Adafruit_BusIO_Register config_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
+    config_reg.write(config, 2);
 }
 
 /*!
@@ -323,8 +320,7 @@ void Adafruit_INA219::writeConfig()
  */
 void Adafruit_INA219::setMode(uint32_t mode)
 {
-    switch (mode)
-        ina219_mode = mode;
+    ina219_mode = mode;
 }
 
 /*!
@@ -369,7 +365,7 @@ void Adafruit_INA219::setBusVRange(uint32_t range)
  */
 void Adafruit_INA219::triggerRead(bool block)
 {
-    setMode(ina219_mode);
+    // setMode(ina219_mode);
     writeConfig();
     if (!block)
         return;
@@ -684,7 +680,7 @@ bool Adafruit_INA219::isConversionReady()
  *  @brief  This Look up table returns the conversion time in us for 
  *      a given Bus Voltage operating mode.
  */
-uint16_t Adafruit_INA219::getConvTimeB_us()
+uint32_t Adafruit_INA219::getConvTimeB_us()
 {
     switch (ina219_adcResBus)
     {
@@ -728,7 +724,7 @@ uint16_t Adafruit_INA219::getConvTimeB_us()
  *  @brief  This Look up table returns the conversion time in us for 
  *      a given Shunt Voltage operating mode.
  */
-uint16_t Adafruit_INA219::getConvTimeS_us()
+uint32_t Adafruit_INA219::getConvTimeS_us()
 {
     switch (ina219_adcResBus)
     {

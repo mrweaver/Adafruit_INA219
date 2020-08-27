@@ -180,8 +180,8 @@ public:
     void triggerRead( bool block = false) ;
     bool isConversionReady();
     bool hasOverflowed();
-    uint16_t getConvTimeS_us();
-    uint16_t getConvTimeB_us();
+    uint32_t getConvTimeS_us();
+    uint32_t getConvTimeB_us();
 
 private:
     Adafruit_I2CDevice *i2c_dev = NULL;
