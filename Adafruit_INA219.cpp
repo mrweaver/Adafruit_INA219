@@ -277,17 +277,97 @@ void Adafruit_INA219::setCalibration_32V_2A() {
  *  @param  on
  *          boolean value
  */
-void Adafruit_INA219::powerSave(bool on) {
-  Adafruit_BusIO_Register config_reg =
-      Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
+void Adafruit_INA219::powerSave(bool on)
+{
+    Adafruit_BusIO_Register config_reg =
+        Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
 
-  Adafruit_BusIO_RegisterBits mode_bits =
-      Adafruit_BusIO_RegisterBits(&config_reg, 3, 0);
-  if (on) {
-    _success = mode_bits.write(INA219_CONFIG_MODE_POWERDOWN);
-  } else {
-    _success = mode_bits.write(INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS);
-  }
+    Adafruit_BusIO_RegisterBits mode_bits =
+        Adafruit_BusIO_RegisterBits(&config_reg, 3, 0);
+    if (on)
+    {
+        _success = mode_bits.write(INA219_CONFIG_MODE_POWERDOWN);
+    }
+    else
+    {
+        _success = mode_bits.write(INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS);
+    }
+}
+
+/*!
+ *  @brief  Writes stored values to the config register
+ */
+void Adafruit_INA219::writeConfig()
+{
+    uint16_t config = ina219_mode |
+                      ina219_adcResShunt |
+                      ina219_adcResBus |
+                      ina219_gainShunt |
+                      ina219_busVoltRange;
+
+    Adafruit_BusIO_Register config_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
+    _success                           = config_reg.write(config, 2);
+}
+
+/*!
+ *  @brief  Set trigger mode according to parameters for later config writing
+ *  @param  mode the operational mode, e.g. continous, triggered, powered down.
+ */
+void Adafruit_INA219::setMode(uint32_t mode)
+{
+    ina219_mode = mode;
+}
+
+/*!
+ *  @brief  Set bus and shunt resolutions and samples for later config writing
+ *  @param  adcShunt new shunt voltage adc resolution / sample averaging to use
+ */
+void Adafruit_INA219::setResShunt(uint32_t adcRes)
+{
+    ina219_adcResShunt = adcRes;
+}
+
+/*!
+ *  @brief  Set bus and shunt resolutions and samples for later config writing
+ *  @param  adcBus new bus voltage adc resolution / sample averaging to use
+ */
+void Adafruit_INA219::setResBus(uint32_t adcRes)
+{
+    ina219_adcResBus = adcRes;
+}
+
+/*!
+ *  @brief  Set shunt gain for later config writing
+ *  @param  gain - shunt gain 40mV, 80mV, 160mV or 320mV.
+ */
+void Adafruit_INA219::setGainShunt(uint32_t gain)
+{
+    ina219_gainShunt = gain;
+}
+
+/*!
+ *  @brief  Set bus voltage range for later config writing
+ *  @param  range - bus voltage range 16V or 32V.
+ */
+void Adafruit_INA219::setBusVRange(uint32_t range)
+{
+    ina219_busVoltRange = range;
+}
+
+/*!
+ *  @brief  Set bus voltage range for later config writing
+ *  @param  range - bus voltage range 16V or 32V.
+ */
+void Adafruit_INA219::triggerRead(bool block)
+{
+    // setMode(ina219_mode);
+    writeConfig();
+    if (!block)
+        return;
+    uint32_t us = getConvTimeS_us() < getConvTimeB_us() ? getConvTimeB_us() : getConvTimeS_us();
+    delayMicroseconds(us);
+    while (!isConversionReady())
+        delayMicroseconds(INA219_CONFIG_ADCRES_9BIT_1S); // little more...
 }
 
 /*!
@@ -388,91 +468,293 @@ void Adafruit_INA219::setCalibration_32V_1A() {
  *     current measurement (0.1mA), at the expense of
  *     only supporting 16V at 400mA max.
  */
-void Adafruit_INA219::setCalibration_16V_400mA() {
+void Adafruit_INA219::setCalibration_16V_400mA()
+{
 
-  // Calibration which uses the highest precision for
-  // current measurement (0.1mA), at the expense of
-  // only supporting 16V at 400mA max.
+    // Calibration which uses the highest precision for
+    // current measurement (0.1mA), at the expense of
+    // only supporting 16V at 400mA max.
 
-  // VBUS_MAX = 16V
-  // VSHUNT_MAX = 0.04          (Assumes Gain 1, 40mV)
-  // RSHUNT = 0.1               (Resistor value in ohms)
+    // VBUS_MAX = 16V
+    // VSHUNT_MAX = 0.04          (Assumes Gain 1, 40mV)
+    // RSHUNT = 0.1               (Resistor value in ohms)
 
-  // 1. Determine max possible current
-  // MaxPossible_I = VSHUNT_MAX / RSHUNT
-  // MaxPossible_I = 0.4A
+    // 1. Determine max possible current
+    // MaxPossible_I = VSHUNT_MAX / RSHUNT
+    // MaxPossible_I = 0.4A
 
-  // 2. Determine max expected current
-  // MaxExpected_I = 0.4A
+    // 2. Determine max expected current
+    // MaxExpected_I = 0.4A
 
-  // 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
-  // MinimumLSB = MaxExpected_I/32767
-  // MinimumLSB = 0.0000122              (12uA per bit)
-  // MaximumLSB = MaxExpected_I/4096
-  // MaximumLSB = 0.0000977              (98uA per bit)
+    // 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
+    // MinimumLSB = MaxExpected_I/32767
+    // MinimumLSB = 0.0000122              (12uA per bit)
+    // MaximumLSB = MaxExpected_I/4096
+    // MaximumLSB = 0.0000977              (98uA per bit)
 
-  // 4. Choose an LSB between the min and max values
-  //    (Preferrably a roundish number close to MinLSB)
-  // CurrentLSB = 0.00005 (50uA per bit)
+    // 4. Choose an LSB between the min and max values
+    //    (Preferrably a roundish number close to MinLSB)
+    // CurrentLSB = 0.00005 (50uA per bit)
 
-  // 5. Compute the calibration register
-  // Cal = trunc (0.04096 / (Current_LSB * RSHUNT))
-  // Cal = 8192 (0x2000)
+    // 5. Compute the calibration register
+    // Cal = trunc (0.04096 / (Current_LSB * RSHUNT))
+    // Cal = 8192 (0x2000)
 
-  ina219_calValue = 8192;
+    ina219_calValue = 8192;
 
-  // 6. Calculate the power LSB
-  // PowerLSB = 20 * CurrentLSB
-  // PowerLSB = 0.001 (1mW per bit)
+    // 6. Calculate the power LSB
+    // PowerLSB = 20 * CurrentLSB
+    // PowerLSB = 0.001 (1mW per bit)
 
-  // 7. Compute the maximum current and shunt voltage values before overflow
-  //
-  // Max_Current = Current_LSB * 32767
-  // Max_Current = 1.63835A before overflow
-  //
-  // If Max_Current > Max_Possible_I then
-  //    Max_Current_Before_Overflow = MaxPossible_I
-  // Else
-  //    Max_Current_Before_Overflow = Max_Current
-  // End If
-  //
-  // Max_Current_Before_Overflow = MaxPossible_I
-  // Max_Current_Before_Overflow = 0.4
-  //
-  // Max_ShuntVoltage = Max_Current_Before_Overflow * RSHUNT
-  // Max_ShuntVoltage = 0.04V
-  //
-  // If Max_ShuntVoltage >= VSHUNT_MAX
-  //    Max_ShuntVoltage_Before_Overflow = VSHUNT_MAX
-  // Else
-  //    Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
-  // End If
-  //
-  // Max_ShuntVoltage_Before_Overflow = VSHUNT_MAX
-  // Max_ShuntVoltage_Before_Overflow = 0.04V
+    // 7. Compute the maximum current and shunt voltage values before overflow
+    //
+    // Max_Current = Current_LSB * 32767
+    // Max_Current = 1.63835A before overflow
+    //
+    // If Max_Current > Max_Possible_I then
+    //    Max_Current_Before_Overflow = MaxPossible_I
+    // Else
+    //    Max_Current_Before_Overflow = Max_Current
+    // End If
+    //
+    // Max_Current_Before_Overflow = MaxPossible_I
+    // Max_Current_Before_Overflow = 0.4
+    //
+    // Max_ShuntVoltage = Max_Current_Before_Overflow * RSHUNT
+    // Max_ShuntVoltage = 0.04V
+    //
+    // If Max_ShuntVoltage >= VSHUNT_MAX
+    //    Max_ShuntVoltage_Before_Overflow = VSHUNT_MAX
+    // Else
+    //    Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
+    // End If
+    //
+    // Max_ShuntVoltage_Before_Overflow = VSHUNT_MAX
+    // Max_ShuntVoltage_Before_Overflow = 0.04V
 
-  // 8. Compute the Maximum Power
-  // MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
-  // MaximumPower = 0.4 * 16V
-  // MaximumPower = 6.4W
+    // 8. Compute the Maximum Power
+    // MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
+    // MaximumPower = 0.4 * 16V
+    // MaximumPower = 6.4W
 
-  // Set multipliers to convert raw current/power values
-  ina219_currentDivider_mA = 20;    // Current LSB = 50uA per bit (1000/50 = 20)
-  ina219_powerMultiplier_mW = 1.0f; // Power LSB = 1mW per bit
+    // Set multipliers to convert raw current/power values
+    ina219_currentDivider_mA = 20;    // Current LSB = 50uA per bit (1000/50 = 20)
+    ina219_powerMultiplier_mW = 1.0f; // Power LSB = 1mW per bit
 
-  // Set Calibration register to 'Cal' calculated above
-  Adafruit_BusIO_Register calibration_reg =
-      Adafruit_BusIO_Register(i2c_dev, INA219_REG_CALIBRATION, 2, MSBFIRST);
-  calibration_reg.write(ina219_calValue, 2);
-  // Set Config register to take into account the settings above
-  uint16_t config = INA219_CONFIG_BVOLTAGERANGE_16V |
-                    INA219_CONFIG_GAIN_1_40MV | INA219_CONFIG_BADCRES_12BIT |
-                    INA219_CONFIG_SADCRES_12BIT_1S_532US |
-                    INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
+    // Set Calibration register to 'Cal' calculated above
+    Adafruit_BusIO_Register calibration_reg =
+        Adafruit_BusIO_Register(i2c_dev, INA219_REG_CALIBRATION, 2, MSBFIRST);
+    calibration_reg.write(ina219_calValue, 2);
+    // Set Config register to take into account the settings above
+    uint16_t config = INA219_CONFIG_BVOLTAGERANGE_16V |
+                      INA219_CONFIG_GAIN_1_40MV |
+                      INA219_CONFIG_BADCRES_12BIT |
+                      INA219_CONFIG_SADCRES_12BIT_1S_532US |
+                      INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
 
-  Adafruit_BusIO_Register config_reg =
-      Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
-  _success = config_reg.write(config, 2);
+    Adafruit_BusIO_Register config_reg =
+        Adafruit_BusIO_Register(i2c_dev, INA219_REG_CONFIG, 2, MSBFIRST);
+    _success = config_reg.write(config, 2);
+}
+
+/*!
+ *  @brief  Configures to INA219 to be able to measure up to 16V and 40mA
+ *          of current.  Each unit of current corresponds to 1uA, and each
+ *          unit of power corresponds to 20uW. Counter overflow occurs at
+ *          32.767mA.
+ *  @note   These calculations assume a 1.0 ohm resistor is present
+ */
+void Adafruit_INA219::setCalibration_16V_40mA()
+{
+
+    // Calibration which uses the highest precision for
+    // current measurement (0.01mA), at the expense of
+    // only supporting 16V at 40mA max.
+
+    // VBUS_MAX = 16V
+    // VSHUNT_MAX = 0.04          (Assumes Gain 1, 40mV)
+    // RSHUNT = 1               (Resistor value in ohms)
+
+    // 1. Determine max possible current
+    // MaxPossible_I = VSHUNT_MAX / RSHUNT
+    // MaxPossible_I = 0.04A
+
+    // 2. Determine max expected current
+    // MaxExpected_I = 0.02A
+
+    // 3. Calculate possible range of LSBs (Min = 15-bit, Max = 12-bit)
+    // MinimumLSB = MaxExpected_I/32767
+    // MinimumLSB = 0.0000006104              (0.61uA per bit)
+    // MaximumLSB = MaxExpected_I/4096
+    // MaximumLSB = 0.00000488281              (4.88uA per bit)
+
+    // 4. Choose an LSB between the min and max values
+    //    (Preferrably a roundish number close to MinLSB)
+    // CurrentLSB = 0.000001 (1uA per bit)
+
+    // 5. Compute the calibration register
+    // Cal = trunc (0.04096 / (CurrentLSB * RSHUNT))
+    // Cal = 40960 (0x2000)
+
+    ina219_calValue = 40960;
+
+    // 6. Calculate the power LSB
+    // PowerLSB = 20 * CurrentLSB
+    // PowerLSB = 0.00002 (0.02mW per bit)
+
+    // 7. Compute the maximum current and shunt voltage values before overflow
+    //
+    // Max_Current = CurrentLSB * 32767
+    // Max_Current = 0.032767A before overflow
+    //
+    // If Max_Current > Max_Possible_I then
+    //    Max_Current_Before_Overflow = MaxPossible_I
+    // Else
+    //    Max_Current_Before_Overflow = Max_Current
+    // End If
+    //
+    // Max_Current_Before_Overflow = Max_Current
+    // Max_Current_Before_Overflow = 0.032767A
+    //
+    // Max_ShuntVoltage = Max_Current_Before_Overflow * RSHUNT
+    // Max_ShuntVoltage = 0.032767V
+    //
+    // If Max_ShuntVoltage >= VSHUNT_MAX
+    //    Max_ShuntVoltage_Before_Overflow = VSHUNT_MAX
+    // Else
+    //    Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
+    // End If
+    //
+    // Max_ShuntVoltage_Before_Overflow = Max_ShuntVoltage
+    // Max_ShuntVoltage_Before_Overflow = 0.032767V
+
+    // 8. Compute the Maximum Power
+    // MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
+    // MaximumPower = 0.032767A * 16V
+    // MaximumPower = 0.524W
+
+    // Set multipliers to convert raw current/power values
+    ina219_currentDivider_mA = 1000;   // Current LSB = 1uA per bit (1000/1uA = 1000)
+    ina219_powerMultiplier_mW = 0.02f; // Power LSB = 1mW per bit (0.02mW)
+
+    // Set Calibration register to 'Cal' calculated above
+    Adafruit_BusIO_Register calibration_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_CALIBRATION, 2, MSBFIRST);
+    _success                                = calibration_reg.write(ina219_calValue, 2);
+
+    // Set Config register to take into account the settings above
+    setBusVRange(INA219_CONFIG_BVOLTAGERANGE_16V);
+    setGainShunt(INA219_CONFIG_GAIN_1_40MV);
+
+    writeConfig();
+}
+
+/*!
+ *  @brief  Retrieves the conversion ready bit from the Bus Voltage
+ *  register, indicating that data from a conversion in available in the 
+ *  output registers. 
+ *  @note   The CNVR bit is set after all conversions, averaging,
+ *  and multiplications are complete. It will clear when:
+ *      1)  Writing a new mode into the Operating Mode bits in the 
+ *          Configuration Register (except for Power-Down or Disable) 
+ *      2) Reading the Power Register
+ */
+bool Adafruit_INA219::isConversionReady()
+{
+    uint16_t value;
+
+    Adafruit_BusIO_Register bus_voltage_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_BUSVOLTAGE, 2, MSBFIRST);
+    bus_voltage_reg.read(&value);
+
+    // Shift to the right 3 to drop CNVR and OVF and multiply by LSB
+    return (bool)(value & INA219_CNVR_MASK);
+}
+
+/*!
+ *  @brief  This Look up table returns the conversion time in us for 
+ *      a given Bus Voltage operating mode.
+ */
+uint32_t Adafruit_INA219::getConvTimeB_us()
+{
+    switch (ina219_adcResBus)
+    {
+    case INA219_CONFIG_BADCRES_9BIT:
+        return INA219_CONFIG_ADCRES_9BIT_1S;
+        break;
+    case INA219_CONFIG_BADCRES_10BIT:
+        return INA219_CONFIG_ADCRES_10BIT_1S;
+        break;
+    case INA219_CONFIG_BADCRES_11BIT:
+        return INA219_CONFIG_ADCRES_11BIT_1S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT:
+        return INA219_CONFIG_ADCRES_12BIT_1S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_2S_1060US:
+        return INA219_CONFIG_ADCRES_12BIT_2S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_4S_2130US:
+        return INA219_CONFIG_ADCRES_12BIT_4S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_8S_4260US:
+        return INA219_CONFIG_ADCRES_12BIT_8S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_16S_8510US:
+        return INA219_CONFIG_ADCRES_12BIT_16S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_32S_17MS:
+        return INA219_CONFIG_ADCRES_12BIT_32S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_64S_34MS:
+        return INA219_CONFIG_ADCRES_12BIT_64S;
+        break;
+    case INA219_CONFIG_BADCRES_12BIT_128S_69MS:
+        return INA219_CONFIG_ADCRES_12BIT_128S;
+        break;
+    }
+}
+
+/*!
+ *  @brief  This Look up table returns the conversion time in us for 
+ *      a given Shunt Voltage operating mode.
+ */
+uint32_t Adafruit_INA219::getConvTimeS_us()
+{
+    switch (ina219_adcResBus)
+    {
+    case INA219_CONFIG_SADCRES_9BIT_1S_84US:
+        return INA219_CONFIG_ADCRES_9BIT_1S;
+        break;
+    case INA219_CONFIG_SADCRES_10BIT_1S_148US:
+        return INA219_CONFIG_ADCRES_10BIT_1S;
+        break;
+    case INA219_CONFIG_SADCRES_11BIT_1S_276US:
+        return INA219_CONFIG_ADCRES_11BIT_1S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_1S_532US:
+        return INA219_CONFIG_ADCRES_12BIT_1S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_2S_1060US:
+        return INA219_CONFIG_ADCRES_12BIT_2S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_4S_2130US:
+        return INA219_CONFIG_ADCRES_12BIT_4S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_8S_4260US:
+        return INA219_CONFIG_ADCRES_12BIT_8S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_16S_8510US:
+        return INA219_CONFIG_ADCRES_12BIT_16S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_32S_17MS:
+        return INA219_CONFIG_ADCRES_12BIT_32S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_64S_34MS:
+        return INA219_CONFIG_ADCRES_12BIT_64S;
+        break;
+    case INA219_CONFIG_SADCRES_12BIT_128S_69MS:
+        return INA219_CONFIG_ADCRES_12BIT_128S;
+        break;
+    }
 }
 
 /*!
