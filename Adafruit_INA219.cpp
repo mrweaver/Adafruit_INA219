@@ -669,6 +669,27 @@ bool Adafruit_INA219::isConversionReady()
     return (bool)(value & INA219_CNVR_MASK);
 }
 
+// TODO: Untested, but could work 
+/*!
+ *  @brief  Retrieves the overflow bit from the Bus Voltage register,
+ *          indicating that the last conversion was out of range.
+ *  @note   The OVF bit is set when the ADC conversion is out of range. 
+ *          It will clear when:
+ *      1)  Writing a new mode into the Operating Mode bits in the 
+ *          Configuration Register (except for Power-Down or Disable) 
+ *      2) Reading the Power Register
+ */
+bool Adafruit_INA219::hasOverflowed()
+{
+    uint16_t value;
+
+    Adafruit_BusIO_Register bus_voltage_reg = Adafruit_BusIO_Register(i2c_dev, INA219_REG_BUSVOLTAGE, 2, MSBFIRST);
+    bus_voltage_reg.read(&value);
+
+    // Shift to the right 3 to drop CNVR and OVF and multiply by LSB
+    return (bool)(value & INA219_OVF_MASK);
+}
+
 /*!
  *  @brief  This Look up table returns the conversion time in us for 
  *      a given Bus Voltage operating mode.
