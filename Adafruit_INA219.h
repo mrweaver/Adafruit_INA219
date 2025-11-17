@@ -10,6 +10,13 @@
  *
  * Written by Bryan Siepert and Kevin "KTOWN" Townsend for Adafruit Industries.
  *
+ * Extended by Michael (Vilicus project) with:
+ * - Flexible configuration API (setMode, setResShunt, setResBus, setGainShunt, setBusVRange)
+ * - Triggered conversion support (triggerRead, isConversionReady)
+ * - Additional calibration profile (setCalibration_16V_40mA)
+ * - Error handling (success(), hasOverflowed())
+ * - Conversion time lookup tables
+ *
  * BSD license, all text here must be included in any redistribution.
  *
  */
@@ -187,13 +194,15 @@ public:
     void powerSave(bool on);
     bool success();
 
+    uint16_t readConfig();
     void writeConfig();
-    void setMode(uint32_t mode);
-    void setResShunt(uint32_t adcRes);
-    void setResBus(uint32_t adcRes);
-    void setGainShunt(uint32_t gain);
-    void setBusVRange(uint32_t range);
-    void triggerRead( bool block = false) ;
+
+    void setMode(uint16_t mode);
+    void setResShunt(uint16_t adcRes);
+    void setResBus(uint16_t adcRes);
+    void setGainShunt(uint16_t gain);
+    void setBusVRange(uint16_t range);
+    bool triggerRead( bool block = false) ;
     bool isConversionReady();
     bool hasOverflowed();
     uint32_t getConvTimeS_us();
@@ -205,13 +214,13 @@ private:
     bool _success; // True if the last I2C transaction was successful
 
     uint8_t ina219_i2caddr = -1;
-    uint32_t ina219_calValue;
+    uint16_t ina219_calValue;
 
-    uint32_t ina219_mode;         // operational mode
-    uint32_t ina219_adcResShunt;  // shunt
-    uint32_t ina219_adcResBus;    // bus
-    uint32_t ina219_gainShunt;    // PGA setting for shunt
-    uint32_t ina219_busVoltRange; // 16V or 32V bus voltage range
+    uint16_t ina219_mode;         // operational mode
+    uint16_t ina219_adcResShunt;  // shunt
+    uint16_t ina219_adcResBus;    // bus
+    uint16_t ina219_gainShunt;    // PGA setting for shunt
+    uint16_t ina219_busVoltRange; // 16V or 32V bus voltage range
 
     // The following multipliers are used to convert raw current and power
     // values to mA and mW, taking into account the current config settings
