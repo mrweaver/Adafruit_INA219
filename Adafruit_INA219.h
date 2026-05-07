@@ -208,6 +208,20 @@ public:
     uint32_t getConvTimeS_us();
     uint32_t getConvTimeB_us();
 
+    /*!
+     *  @brief  Non-destructive R/W integrity test on the Calibration Register
+     *          (0x05). Verifies the chip ACKs its address, the bus paths are
+     *          intact in both directions, and the chip's internal register
+     *          memory accepts and returns data correctly.
+     *  @note   The current calibration value is read, replaced with a test
+     *          pattern, read back for verification, and then restored.
+     *          A failed test path may leave the register in an indeterminate
+     *          state, so callers should re-write calibration via
+     *          setCalibration_*() before subsequent measurements.
+     *  @return true if the device passed the integrity test
+     */
+    bool isAlive();
+
 private:
     Adafruit_I2CDevice *i2c_dev = NULL;
 

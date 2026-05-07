@@ -831,3 +831,48 @@ uint32_t Adafruit_INA219::getConvTimeS_us()
  *          result is stored.
  */
 bool Adafruit_INA219::success() { return _success; }
+
+/*!
+ *  @brief  Non-destructive R/W integrity test on the Calibration Register (0x05).
+ *  @note   Saves the current calibration value, writes a test pattern, reads it
+ *          back, then restores the original value. Updates _success based on
+ *          the round-trip result so callers can also use success() afterwards.
+ *  @return true if the chip ACKed and the test pattern round-tripped intact
+ */
+bool Adafruit_INA219::isAlive()
+{
+    if (!i2c_dev)
+    {
+        _success = false;
+        return false;
+    }
+
+    Adafruit_BusIO_Register cal_reg =
+        Adafruit_BusIO_Register(i2c_dev, INA219_REG_CALIBRATION, 2, MSBFIRST);
+
+    uint16_t orig;
+    if (!cal_reg.read(&orig))
+    {
+        _success = false;
+        return false;
+    }
+
+    if (!cal_reg.write(0xAA55, 2))
+    {
+        _success = false;
+        return false;
+    }
+
+    uint16_t test;
+    if (!cal_reg.read(&test))
+    {
+        _success = false;
+        return false;
+    }
+
+    // Restore original value (best-effort; don't fail the test if restore fails)
+    cal_reg.write(orig, 2);
+
+    _success = (test == 0xAA55);
+    return _success;
+}
